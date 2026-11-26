@@ -1,0 +1,704 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Synth Module - Pi 3B + LCD 16x2 + 4 Faders</title>
+<style>
+  :root {
+    --panel-border: #383c44;
+    --lcd-bg: #78b800;
+    --lcd-pixel: #152400;
+    --lcd-shadow: rgba(21, 36, 0, 0.18);
+    --accent: #00d2ff;
+  }
+
+  * { box-sizing: border-box; user-select: none; }
+
+  body {
+    background: #121316;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #9aa0a6;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .module-chassis {
+    background: linear-gradient(145deg, #24272c, #181a1e);
+    border: 3px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    max-width: 680px;
+    width: 100%;
+  }
+
+  .top-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .lcd-bezel {
+    background: #0d0e10;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border: 2px solid #2e3239;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.9);
+    flex: 1;
+    min-width: 320px;
+  }
+
+  .lcd-screen {
+    background: var(--lcd-bg);
+    color: var(--lcd-pixel);
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.2rem;
+    line-height: 1.35;
+    padding: 10px 14px;
+    border-radius: 4px;
+    box-shadow: inset 0 0 18px rgba(0,0,0,0.25), 0 0 12px rgba(120, 184, 0, 0.25);
+    letter-spacing: 1px;
+    white-space: pre;
+    overflow: hidden;
+    text-shadow: 1px 1px 0px var(--lcd-shadow);
+  }
+
+  .lcd-label {
+    font-size: 0.65rem;
+    color: #666;
+    text-align: right;
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+
+  .encoder-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .encoder-box small {
+    color: #8b929e;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .encoder-knob {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #4a4f59, #1f2227);
+    border: 3px solid #111;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.15);
+    position: relative;
+    cursor: grab;
+    touch-action: none;
+    transition: transform 0.08s ease-out;
+  }
+
+  .encoder-knob:active {
+    transform: scale(0.95);
+  }
+
+  .encoder-indicator {
+    width: 4px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  .encoder-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .btn-hw {
+    background: #2c3038;
+    color: #ddd;
+    border: 1px solid #454b57;
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .btn-hw:hover { background: #3a3f4a; }
+  .btn-hw:active { background: #1c1f24; }
+  .btn-push {
+    background: #005f73;
+    border-color: #0a9396;
+    color: #fff;
+    font-weight: bold;
+  }
+  .btn-push:hover { background: #0a9396; }
+
+  .faders-section {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    background: #17191c;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #2a2d34;
+  }
+
+  .channel-strip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 6px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .channel-strip.active {
+    border-color: rgba(0, 210, 255, 0.45);
+    background: rgba(0, 210, 255, 0.05);
+  }
+
+  .ch-badge {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #262930;
+    color: #aaa;
+  }
+
+  .channel-strip.active .ch-badge {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .fader-track {
+    height: 150px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  input[type=range].fader {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 140px;
+    height: 8px;
+    background: #0c0d0f;
+    border-radius: 4px;
+    border: 1px solid #333;
+    transform: rotate(-90deg);
+    cursor: pointer;
+  }
+
+  input[type=range].fader::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 26px;
+    height: 16px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #e0e0e0, #888);
+    border: 1px solid #111;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.8);
+  }
+
+  .vol-readout {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #8ab4f8;
+  }
+
+  .footer-tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+
+  .btn-play {
+    background: #2b9348;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .btn-play:hover { background: #38b000; }
+
+  .midi-log {
+    font-family: monospace;
+    background: #0d0e10;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #282c34;
+    color: #78b800;
+    flex: 1;
+    min-width: 240px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Simulador: Pi 3B + LCD 16x2 + KY-040 + 4 Faders</h1>
+
+  <div class="module-chassis">
+    <div class="top-section">
+      <div class="lcd-bezel">
+        <div class="lcd-screen" id="lcdScreen">>CH1:Grand Piano
+VOL:100%   P:00 [M]</div>
+        <div class="lcd-label">DISPLAY LCD 16x2 I2C (0x27)</div>
+      </div>
+
+      <div class="encoder-box">
+        <small>Encoder 1 · Canal / Timbre</small>
+        <div class="encoder-knob" id="encoderKnob" title="Gire a rodinha do mouse ou clique nos botÃµes abaixo">
+          <div class="encoder-indicator" id="knobIndicator"></div>
+        </div>
+        <div class="encoder-buttons">
+          <button type="button" class="btn-hw" id="btnLeft">â†º Girar -</button>
+          <button type="button" class="btn-hw btn-push" id="btnPush">Apertar (CH)</button>
+          <button type="button" class="btn-hw" id="btnRight">Girar + â†»</button>
+        </div>
+      </div>
+
+      <div class="encoder-box">
+        <small>Encoder 2 · Categoria / FX</small>
+        <div class="encoder-knob" id="categoryKnob" title="Gire para navegar categorias ou efeitos; pressione para selecionar">
+          <div class="encoder-indicator" id="categoryIndicator"></div>
+        </div>
+        <div class="encoder-buttons">
+          <button type="button" class="btn-hw" id="btnCategoryLeft">Girar -</button>
+          <button type="button" class="btn-hw btn-push" id="btnCategoryPush">Selecionar</button>
+          <button type="button" class="btn-hw" id="btnCategoryRight">Girar +</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="faders-section" id="fadersContainer"></div>
+
+    <div class="footer-tools">
+      <button type="button" class="btn-play" id="btnPlay">â–¶ Tocar Acorde Teste (Ouvir Mistura)</button>
+      <div class="midi-log" id="midiLog">ALSA/FluidSynth: Pronto (4 Canais Ativos)</div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  const soundfontPresets = [
+    { id: 0, name: "Grand Piano ", freqMult: 1.0, type: "triangle" },
+    { id: 1, name: "Bright Piano", freqMult: 1.0, type: "sawtooth" },
+    { id: 2, name: "Rhodes EP   ", freqMult: 1.0, type: "sine" },
+    { id: 3, name: "DX7 E.Piano ", freqMult: 2.0, type: "sine" },
+    { id: 4, name: "Warm Pad    ", freqMult: 0.5, type: "sine" },
+    { id: 5, name: "Slow Strings", freqMult: 1.0, type: "sawtooth" },
+    { id: 6, name: "Church Organ", freqMult: 1.0, type: "square" },
+    { id: 7, name: "Synth Brass ", freqMult: 1.0, type: "sawtooth" },
+    { id: 8, name: "Finger Bass ", freqMult: 0.5, type: "triangle" },
+    { id: 9, name: "Choir Aahs  ", freqMult: 1.0, type: "sine" }
+  ];
+
+  const channels = [
+    { ch: 1, presetIdx: 0, volume: 100 },
+    { ch: 2, presetIdx: 4, volume: 65 },
+    { ch: 3, presetIdx: 5, volume: 0 },
+    { ch: 4, presetIdx: 2, volume: 0 }
+  ];
+
+  let activeChannelIdx = 0;
+  let knobAngle = 0;
+  let tempTimer = null;
+  const categories = [
+    { name: 'Piano', presets: [0, 1] },
+    { name: 'E.Piano', presets: [2, 3] },
+    { name: 'Pad', presets: [4] },
+    { name: 'Strings', presets: [5] },
+    { name: 'Organ', presets: [6] },
+    { name: 'Brass', presets: [7] },
+    { name: 'Bass', presets: [8] },
+    { name: 'Voice', presets: [9] }
+  ];
+  const channelCategories = channels.map(function(channel) {
+    return categories.findIndex(function(category) { return category.presets.includes(channel.presetIdx); });
+  });
+  const effects = [
+    { name: 'Modulation', enabled: false },
+    { name: 'Reverb', enabled: false },
+    { name: 'Chorus', enabled: false },
+    { name: 'Delay', enabled: false },
+    { name: 'Oitava', enabled: false },
+    { name: 'Transpose', enabled: false }
+  ];
+  let categoryCursor = channelCategories[activeChannelIdx];
+  let effectCursor = 0;
+  let categoryBrowseArmed = false;
+
+  function padRight(str, len) {
+    while (str.length < len) str += ' ';
+    return str.slice(0, len);
+  }
+
+  function padLeft(str, len) {
+    while (str.length < len) str = ' ' + str;
+    return str;
+  }
+
+  function logMidi(msg) {
+    document.getElementById('midiLog').textContent = msg;
+  }
+
+  function updateLCD(temporaryLine2) {
+    const current = channels[activeChannelIdx];
+    const preset = soundfontPresets[current.presetIdx];
+    const line1 = padRight('>CH' + current.ch + ':' + preset.name.trim(), 16);
+
+    let line2;
+    if (temporaryLine2) {
+      line2 = padRight(temporaryLine2, 16);
+    } else if (categoryBrowseArmed) {
+      line2 = padRight('CAT: ' + categories[categoryCursor].name, 16);
+    } else {
+      const volStr = 'V:' + padLeft(String(current.volume), 3) + '%';
+      const progNum = current.presetIdx < 10 ? '0' + current.presetIdx : String(current.presetIdx);
+      line2 = padRight(volStr + ' P:' + progNum, 16);
+    }
+
+    document.getElementById('lcdScreen').textContent = line1 + '\n' + line2;
+  }
+
+  function pressEncoder() {
+    activeChannelIdx = (activeChannelIdx + 1) % channels.length;
+    categoryCursor = channelCategories[activeChannelIdx];
+    categoryBrowseArmed = true;
+    const strips = document.querySelectorAll('.channel-strip');
+    for (let i = 0; i < strips.length; i++) {
+      strips[i].classList.toggle('active', i === activeChannelIdx);
+    }
+    updateLCD();
+    logMidi('Canal ' + channels[activeChannelIdx].ch + ' selecionado. Encoder 2: categorias.');
+  }
+
+  function rotateEncoder(dir) {
+    knobAngle += dir * 18;
+    document.getElementById('knobIndicator').style.transform = 'translateX(-50%) rotate(' + knobAngle + 'deg)';
+
+    const current = channels[activeChannelIdx];
+    const presetList = categories[channelCategories[activeChannelIdx]].presets;
+    const currentPresetPosition = presetList.indexOf(current.presetIdx);
+    const nextPosition = (currentPresetPosition + dir + presetList.length) % presetList.length;
+    current.presetIdx = presetList[nextPosition];
+
+    const preset = soundfontPresets[current.presetIdx];
+    updateLCD();
+    logMidi('MIDI CH' + current.ch + ': Program Change -> #' + preset.id + ' (' + preset.name.trim() + ')');
+  }
+
+  function rotateSecondEncoder(dir) {
+    if (categoryBrowseArmed) {
+      categoryCursor = (categoryCursor + dir + categories.length) % categories.length;
+      updateLCD();
+      logMidi('Categoria: ' + categories[categoryCursor].name + ' · pressione Encoder 2 para selecionar');
+      return;
+    }
+
+    effectCursor = (effectCursor + dir + effects.length) % effects.length;
+    const effect = effects[effectCursor];
+    updateLCD('FX:' + effect.name.slice(0, 8) + (effect.enabled ? ' ON' : ' OFF'));
+    logMidi('Efeito selecionado: ' + effect.name + (effect.enabled ? ' (ligado)' : ' (desligado)'));
+  }
+
+  function pressSecondEncoder() {
+    if (categoryBrowseArmed) {
+      const current = channels[activeChannelIdx];
+      const category = categories[categoryCursor];
+      channelCategories[activeChannelIdx] = categoryCursor;
+      if (!category.presets.includes(current.presetIdx)) current.presetIdx = category.presets[0];
+      categoryBrowseArmed = false;
+      updateLCD('CAT: ' + category.name);
+      logMidi('Canal ' + current.ch + ': categoria ' + category.name + ' selecionada');
+      clearTimeout(tempTimer);
+      tempTimer = setTimeout(updateLCD, 1600);
+      return;
+    }
+
+    const effect = effects[effectCursor];
+    effect.enabled = !effect.enabled;
+    updateLCD('FX:' + effect.name.slice(0, 8) + (effect.enabled ? ' ON' : ' OFF'));
+    logMidi(effect.name + (effect.enabled ? ' ativado' : ' desativado'));
+  }
+
+  function updateFader(chIdx, val) {
+    const volume = parseInt(val, 10);
+    channels[chIdx].volume = volume;
+    document.getElementById('vol-' + chIdx).textContent = volume + '%';
+
+    const midiCC7 = Math.round((volume / 100) * 127);
+    logMidi('ADS1115 A' + chIdx + ' -> MIDI CH' + channels[chIdx].ch + ' CC#7 (Vol): ' + midiCC7);
+
+    clearTimeout(tempTimer);
+    const filled = Math.round(volume / 10);
+    let bar = '';
+  for (let i = 0; i < 10; i++) {
+bar += (i < filled) ? '#' : '-';
+}
+updateLCD('CH' + channels[chIdx].ch + ' ' + bar.slice(0, 6) + ' ' + padLeft(String(volume), 3) + '%');
+tempTimer = setTimeout(function() {
+updateLCD();
+}, 1400);
+}
+function renderFaders() {
+const container = document.getElementById('fadersContainer');
+container.innerHTML = '';
+channels.forEach(function(c, idx) {
+const strip = document.createElement('div');
+strip.className = 'channel-strip' + (idx === activeChannelIdx ? ' active' : '');
+const badge = document.createElement('div');
+badge.className = 'ch-badge';
+badge.textContent = 'CANAL ' + c.ch;
+const track = document.createElement('div');
+track.className = 'fader-track';
+const slider = document.createElement('input');
+slider.type = 'range';
+slider.min = '0';
+slider.max = '100';
+slider.value = String(c.volume);
+slider.className = 'fader';
+slider.addEventListener('input', function() {
+updateFader(idx, this.value);
+});
+const readout = document.createElement('div');
+readout.className = 'vol-readout';
+readout.id = 'vol-' + idx;
+readout.textContent = c.volume + '%';
+track.appendChild(slider);
+strip.appendChild(badge);
+strip.appendChild(track);
+strip.appendChild(readout);
+container.appendChild(strip);
+});
+}
+function playTestChord() {
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const ctx = new AudioCtx();
+const notes = [261.63, 329.63, 392.00, 493.88];
+const isEffectOn = function(name) { return effects.some(function(effect) { return effect.name === name && effect.enabled; }); };
+channels.forEach(function(c) {
+if (c.volume === 0) return;
+const preset = soundfontPresets[c.presetIdx];
+const masterGain = ctx.createGain();
+masterGain.gain.setValueAtTime((c.volume / 100) * 0.12, ctx.currentTime);
+masterGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.6);
+masterGain.connect(ctx.destination);
+if (isEffectOn('Reverb')) {
+  const convolver = ctx.createConvolver();
+  const impulse = ctx.createBuffer(2, Math.floor(ctx.sampleRate * 1.2), ctx.sampleRate);
+  for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
+    const data = impulse.getChannelData(channel);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2.5);
+  }
+  convolver.buffer = impulse;
+  const wet = ctx.createGain();
+  wet.gain.value = 0.22;
+  masterGain.connect(convolver);
+  convolver.connect(wet);
+  wet.connect(ctx.destination);
+}
+if (isEffectOn('Delay')) {
+  const delay = ctx.createDelay(1);
+  const feedback = ctx.createGain();
+  const wet = ctx.createGain();
+  delay.delayTime.value = 0.24;
+  feedback.gain.value = 0.28;
+  wet.gain.value = 0.25;
+  masterGain.connect(delay);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(wet);
+  wet.connect(ctx.destination);
+}
+if (isEffectOn('Chorus')) {
+  const delay = ctx.createDelay(0.05);
+  const lfo = ctx.createOscillator();
+  const depth = ctx.createGain();
+  const wet = ctx.createGain();
+  delay.delayTime.value = 0.025;
+  depth.gain.value = 0.008;
+  wet.gain.value = 0.3;
+  lfo.frequency.value = 0.8;
+  lfo.connect(depth);
+  depth.connect(delay.delayTime);
+  masterGain.connect(delay);
+  delay.connect(wet);
+  wet.connect(ctx.destination);
+  lfo.start();
+  lfo.stop(ctx.currentTime + 1.7);
+}
+notes.forEach(function(freq) {
+const osc = ctx.createOscillator();
+osc.type = preset.type;
+const semitones = isEffectOn('Transpose') ? 2 : 0;
+const octave = isEffectOn('Oitava') ? 2 : 1;
+osc.frequency.setValueAtTime(freq * preset.freqMult * octave * Math.pow(2, semitones / 12), ctx.currentTime);
+osc.connect(masterGain);
+osc.start();
+osc.stop(ctx.currentTime + 1.6);
+if (isEffectOn('Modulation')) {
+  const vibrato = ctx.createOscillator();
+  const vibratoDepth = ctx.createGain();
+  vibrato.frequency.value = 5;
+  vibratoDepth.gain.value = 18;
+  vibrato.connect(vibratoDepth);
+  vibratoDepth.connect(osc.detune);
+  vibrato.start();
+  vibrato.stop(ctx.currentTime + 1.7);
+}
+});
+});
+logMidi('Ãudio: acorde tocando com efeitos selecionados');
+}
+document.getElementById('btnLeft').addEventListener('click', function() { rotateEncoder(-1); });
+document.getElementById('btnRight').addEventListener('click', function() { rotateEncoder(1); });
+document.getElementById('btnPush').addEventListener('click', pressEncoder);
+document.getElementById('btnPlay').addEventListener('click', playTestChord);
+const knob = document.getElementById('encoderKnob');
+let dragAngle = null;
+let dragRemainder = 0;
+let didRotate = false;
+
+knob.addEventListener('pointerdown', function(e) {
+  e.preventDefault();
+  knob.setPointerCapture(e.pointerId);
+  const rect = knob.getBoundingClientRect();
+  dragAngle = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
+  dragRemainder = 0;
+  didRotate = false;
+  knob.style.cursor = 'grabbing';
+});
+
+knob.addEventListener('pointermove', function(e) {
+  if (dragAngle === null) return;
+  const rect = knob.getBoundingClientRect();
+  const angle = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
+  let delta = angle - dragAngle;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  dragAngle = angle;
+  dragRemainder += delta;
+  const step = Math.PI / 6;
+  while (Math.abs(dragRemainder) >= step) {
+    const dir = dragRemainder > 0 ? 1 : -1;
+    rotateEncoder(dir);
+    dragRemainder -= dir * step;
+    didRotate = true;
+  }
+});
+
+function finishKnobPointer() {
+  if (dragAngle === null) return;
+  dragAngle = null;
+  knob.style.cursor = 'grab';
+  if (!didRotate) pressEncoder();
+}
+
+knob.addEventListener('pointerup', finishKnobPointer);
+knob.addEventListener('pointercancel', function() {
+  dragAngle = null;
+  knob.style.cursor = 'grab';
+});
+knob.addEventListener('lostpointercapture', function() {
+  dragAngle = null;
+  knob.style.cursor = 'grab';
+});
+knob.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  rotateEncoder(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+
+document.getElementById('btnCategoryLeft').addEventListener('click', function() { rotateSecondEncoder(-1); });
+document.getElementById('btnCategoryRight').addEventListener('click', function() { rotateSecondEncoder(1); });
+document.getElementById('btnCategoryPush').addEventListener('click', pressSecondEncoder);
+
+const categoryKnob = document.getElementById('categoryKnob');
+let categoryDragAngle = null;
+let categoryDragRemainder = 0;
+let categoryDidRotate = false;
+categoryKnob.addEventListener('pointerdown', function(e) {
+  e.preventDefault();
+  categoryKnob.setPointerCapture(e.pointerId);
+  const rect = categoryKnob.getBoundingClientRect();
+  categoryDragAngle = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
+  categoryDragRemainder = 0;
+  categoryDidRotate = false;
+  categoryKnob.style.cursor = 'grabbing';
+});
+categoryKnob.addEventListener('pointermove', function(e) {
+  if (categoryDragAngle === null) return;
+  const rect = categoryKnob.getBoundingClientRect();
+  const angle = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
+  let delta = angle - categoryDragAngle;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  categoryDragAngle = angle;
+  categoryDragRemainder += delta;
+  while (Math.abs(categoryDragRemainder) >= Math.PI / 6) {
+    const dir = categoryDragRemainder > 0 ? 1 : -1;
+    rotateSecondEncoder(dir);
+    categoryDragRemainder -= dir * Math.PI / 6;
+    categoryDidRotate = true;
+  }
+});
+categoryKnob.addEventListener('pointerup', function() {
+  if (categoryDragAngle === null) return;
+  categoryDragAngle = null;
+  categoryKnob.style.cursor = 'grab';
+  if (!categoryDidRotate) pressSecondEncoder();
+});
+categoryKnob.addEventListener('pointercancel', function() {
+  categoryDragAngle = null;
+  categoryKnob.style.cursor = 'grab';
+});
+categoryKnob.addEventListener('lostpointercapture', function() {
+  categoryDragAngle = null;
+  categoryKnob.style.cursor = 'grab';
+});
+categoryKnob.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  rotateSecondEncoder(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+
+renderFaders();
+updateLCD();
+})();
+</script>
+</body>
+</html>

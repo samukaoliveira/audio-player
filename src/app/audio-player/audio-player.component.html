@@ -1,0 +1,56 @@
+<div class="container-player">
+  <div class="container-interno">
+    <div class="header">
+        <h2>⚡ Audio Player</h2>
+        <button class="add-musica">Adicionar Música</button>
+    </div>
+    <div class="animacao">
+        <div class="gif">
+          <span class="fone" [style.transform]="'rotate(' + anguloAtual + 'deg)'">🎧</span>
+        </div>
+        <h2>Nome Música</h2>
+        <h3>Detalhes</h3>
+    </div>
+    <div class="controles">
+        <div class="duracao">
+          <div class="duracao-row">
+            <span class="duracao-atual">0:15</span>
+            <span class="duracao-total">4:50</span>
+          </div>
+          <input type="range" class="duracao-bar">
+        </div>
+        <div class="play-row">
+          <span class="volume-span"><input type="range" class="volume"></span>
+          <span class="aleatorio-span"><button class="aleatorio bt-control">🔀</button></span>
+          <span class="play-span">
+            <button class="prev bt-control">⏪</button>
+            <button class="play bt-control">▶️⏹️</button>
+            <button class="next bt-control" (click)="girarFone()">⏩</button>
+          </span>
+          <span class="repeat-span"><button class="repeat bt-control">🔁</button></span>
+          <span class="velocidade-span">Vel.
+            <select class="velocidade">
+              <option value="0.5">0.5</option>
+              <option value="1">1</option>
+              <option value="1.5">1.5</option>
+              <option value="2">2</option>
+            </select>
+          </span>
+        </div>
+    </div>
+    <div class="playlist">
+      <div class="item-playlist">
+        <span class="ordem"><p>1</p></span>
+        <span class="nome"><p class="nome_musica">Nome Música</p></span>
+        <span class="play-playlist">▶</span>
+      </div>
+      <div class="item-playlist">
+        <span class="ordem"><p>1</p></span>
+        <span class="nome"><p class="nome_musica">Nome Música</p></span>
+        <span class="play-playlist">▶</span>
+      </div>
+
+    </div>
+
+  </div>
+</div>
